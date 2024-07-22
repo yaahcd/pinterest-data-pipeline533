@@ -21,22 +21,69 @@ def get_db_credentials():
 
 class AWSDBConnector:
 
-    def __init__(self, host, user, password):
+    def __init__(self, host, user, password, database, port):
 
         self.HOST = host
         self.USER = user
         self.PASSWORD = password
-        self.DATABASE = 'pinterest_data'
-        self.PORT = 3306
+        self.DATABASE = database
+        self.PORT = port
     
     def create_db_connector(self):
         engine = sqlalchemy.create_engine(f"mysql+pymysql://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.DATABASE}?charset=utf8mb4")
         return engine
 
-
 creds = get_db_credentials()
-new_connector = AWSDBConnector(creds['HOST'], creds['USER'], creds['PASSWORD'])
+new_connector = AWSDBConnector(creds['HOST'], creds['USER'], creds['PASSWORD'], creds['DATABASE'], creds['PORT'])
 
+def send_data_to_s3(data):
+    headers = {'Content-Type': 'application/vnd.kafka.json.v2+json'}
+
+    if "user" in data:
+       payload = json.dumps({ "records" : [{
+           "value" : {
+                "ind": data["user"]["ind"],
+                "first_name": data["user"]["first_name"],
+                "last_name": data["user"]["last_name"],
+                "age": data["user"]["age"],
+                "date_joined": data["user"]["date_joined"].strftime("%Y-%m-%d %H:%M:%S") 
+                }
+                }]})
+       response = requests.request("POST", f"{creds["INVOKE_URL"]}/topics/0e03d1c30c91.user", headers=headers, data=payload)
+       print(response._content)
+
+    if "geo" in data:
+       payload = json.dumps({"records": [{ 
+           "value": { 
+               "ind": data["geo"]["ind"],
+               "timestamp": data["geo"]["timestamp"].strftime("%Y-%m-%d %H:%M:%S"),
+               "latitude": data["geo"]["latitude"],
+               "longitude": data["geo"]["longitude"],
+               "country": data["geo"]["country"]
+               }
+               }]})
+       response = requests.request("POST", f"{creds["INVOKE_URL"]}/topics/0e03d1c30c91.geo", headers=headers, data=payload)
+       print(response.status_code)
+
+    if "pin" in data:
+        payload = json.dumps({ "records": [{
+            "value": {
+                "index": data["pin"]["index"],
+                "unique_id": data["pin"]["unique_id"],
+                "title": data["pin"]["title"],
+                "description": data["pin"]["description"],
+                "poster_name": data["pin"]["poster_name"],
+                "follower_count": data["pin"]["follower_count"],
+                "tag_list": data["pin"]["tag_list"],
+                "is_image_or_video": data["pin"]["is_image_or_video"],
+                "image_src": data["pin"]["image_src"],
+                "downloaded": data["pin"]["downloaded"],
+                "save_location": data["pin"]["save_location"],
+                "category": data["pin"]["category"]
+                }
+                }]})
+        response = requests.request("POST", f"{creds["INVOKE_URL"]}/topics/0e03d1c30c91.pin", headers=headers, data=payload)
+        print(response.status_code)
 
 def run_infinite_post_data_loop():
     while True:
@@ -51,22 +98,25 @@ def run_infinite_post_data_loop():
             
             for row in pin_selected_row:
                 pin_result = dict(row._mapping)
+                send_data_to_s3({"pin": pin_result})
 
             geo_string = text(f"SELECT * FROM geolocation_data LIMIT {random_row}, 1")
             geo_selected_row = connection.execute(geo_string)
             
             for row in geo_selected_row:
                 geo_result = dict(row._mapping)
+                send_data_to_s3({'geo': geo_result})
 
             user_string = text(f"SELECT * FROM user_data LIMIT {random_row}, 1")
             user_selected_row = connection.execute(user_string)
             
             for row in user_selected_row:
                 user_result = dict(row._mapping)
+                send_data_to_s3({'user': user_result})
             
-            print(pin_result)
-            print(geo_result)
-            print(user_result)
+            # print(pin_result)
+            # print(geo_result)
+            # print(user_result)
 
 if __name__ == "__main__":
     run_infinite_post_data_loop()
