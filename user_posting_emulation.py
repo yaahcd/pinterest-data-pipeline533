@@ -12,29 +12,28 @@ import yaml
 random.seed(100)
 
 
-def get_db_credentials():
-        
-    with open('db_creds.yaml', "r") as creds:
-            cred_dic = yaml.safe_load(creds)
-
-    return cred_dic
-
 class AWSDBConnector:
 
-    def __init__(self, host, user, password, database, port):
+    def __init__(self):
 
-        self.HOST = host
-        self.USER = user
-        self.PASSWORD = password
-        self.DATABASE = database
-        self.PORT = port
+        self.HOST = self.get_db_credentials()['HOST']
+        self.USER = self.get_db_credentials()['USER']
+        self.PASSWORD = self.get_db_credentials()['PASSWORD']
+        self.DATABASE = self.get_db_credentials()['DATABASE']
+        self.PORT = self.get_db_credentials()['PORT']
+
+    def get_db_credentials(self):
+        
+        with open('db_creds.yaml', "r") as creds:
+            cred_dic = yaml.safe_load(creds)
+
+        return cred_dic
     
     def create_db_connector(self):
         engine = sqlalchemy.create_engine(f"mysql+pymysql://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.DATABASE}?charset=utf8mb4")
         return engine
 
-creds = get_db_credentials()
-new_connector = AWSDBConnector(creds['HOST'], creds['USER'], creds['PASSWORD'], creds['DATABASE'], creds['PORT'])
+new_connector = AWSDBConnector()
 
 def send_data_to_s3(data):
     headers = {'Content-Type': 'application/vnd.kafka.json.v2+json'}
@@ -49,8 +48,8 @@ def send_data_to_s3(data):
                 "date_joined": data["user"]["date_joined"].strftime("%Y-%m-%d %H:%M:%S") 
                 }
                 }]})
-       response = requests.request("POST", f"{creds["INVOKE_URL"]}/topics/0e03d1c30c91.user", headers=headers, data=payload)
-       print(response._content)
+       response = requests.request("POST", f"{new_connector.get_db_credentials()["INVOKE_URL"]}/topics/0e03d1c30c91.user", headers=headers, data=payload)
+       print(response.status_code)
 
     if "geo" in data:
        payload = json.dumps({"records": [{ 
@@ -62,7 +61,7 @@ def send_data_to_s3(data):
                "country": data["geo"]["country"]
                }
                }]})
-       response = requests.request("POST", f"{creds["INVOKE_URL"]}/topics/0e03d1c30c91.geo", headers=headers, data=payload)
+       response = requests.request("POST", f"{new_connector.get_db_credentials()["INVOKE_URL"]}/topics/0e03d1c30c91.geo", headers=headers, data=payload)
        print(response.status_code)
 
     if "pin" in data:
@@ -82,7 +81,7 @@ def send_data_to_s3(data):
                 "category": data["pin"]["category"]
                 }
                 }]})
-        response = requests.request("POST", f"{creds["INVOKE_URL"]}/topics/0e03d1c30c91.pin", headers=headers, data=payload)
+        response = requests.request("POST", f"{new_connector.get_db_credentials()["INVOKE_URL"]}/topics/0e03d1c30c91.pin", headers=headers, data=payload)
         print(response.status_code)
 
 def run_infinite_post_data_loop():
