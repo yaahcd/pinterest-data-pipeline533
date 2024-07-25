@@ -3,6 +3,8 @@
 
 # COMMAND ----------
 
+from pyspark.sql.functions import regexp_replace
+
 df_pin = df_pin.replace({'User Info Error': None})
 df_pin = df_pin.withColumn("follower_count", regexp_replace("follower_count", "k", "000"))
 df_pin = df_pin.withColumn("follower_count", df_pin["follower_count"].cast("int"))
