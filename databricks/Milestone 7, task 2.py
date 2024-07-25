@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %run "./Milestone 6, task 2"
+# MAGIC %run "./Milestone 7, task 1"
 
 # COMMAND ----------
 
