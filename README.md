@@ -11,7 +11,7 @@
 
 ### Description
 ---
-
+This project simulates Pinterest's data pipeline. It utilizes AWS technologies such as EC2, S3, MSK, API Gateway, MWAA, and Kinesis, as well as Spark, Apache Kafka, and Databricks, for data cleaning and processing within the pipeline.
 
 ### Installation
 ---
