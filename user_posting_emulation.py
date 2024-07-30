@@ -1,11 +1,12 @@
-import requests
 from time import sleep
-import random
 from multiprocessing import Process
+from sqlalchemy import text
+from user_posting_emulation_streaming import send_data_to_stream
+import requests
+import random
 import boto3
 import json
 import sqlalchemy
-from sqlalchemy import text
 import yaml
 
 
@@ -97,21 +98,21 @@ def run_infinite_post_data_loop():
             
             for row in pin_selected_row:
                 pin_result = dict(row._mapping)
-                send_data_to_s3({"pin": pin_result})
+                send_data_to_stream({'pin': pin_result}, new_connector.get_db_credentials()["INVOKE_URL"])
 
             geo_string = text(f"SELECT * FROM geolocation_data LIMIT {random_row}, 1")
             geo_selected_row = connection.execute(geo_string)
             
             for row in geo_selected_row:
                 geo_result = dict(row._mapping)
-                send_data_to_s3({'geo': geo_result})
+                send_data_to_stream({'geo': geo_result}, new_connector.get_db_credentials()["INVOKE_URL"])
 
             user_string = text(f"SELECT * FROM user_data LIMIT {random_row}, 1")
             user_selected_row = connection.execute(user_string)
             
             for row in user_selected_row:
                 user_result = dict(row._mapping)
-                send_data_to_s3({'user': user_result})
+                send_data_to_stream({'user': user_result}, new_connector.get_db_credentials()["INVOKE_URL"])
             
             # print(pin_result)
             # print(geo_result)
